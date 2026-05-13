@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Ruta de las Gildas</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:     #1A1209;
+    --cream:   #F7F2E8;
+    --gold:    #C9943A;
+    --gold-lt: #E8D5A0;
+    --terra:   #8B3A2F;
+    --sage:    #3D5C38;
+    --warm:    #8A7F72;
+    --border:  #D8CFBF;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    overflow: hidden;
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .screen.active { opacity: 1; pointer-events: all; }
+
+  /* ══ Wrong day ══ */
+  #s0 {
+    background: var(--ink);
+    align-items: center; justify-content: center;
+    flex-direction: column; text-align: center; padding: 40px; gap: 20px;
+  }
+  .s0-icon { font-size: 56px; }
+  .s0-title { font-family: 'Playfair Display', serif; font-size: clamp(24px,6vw,40px); color: var(--cream); line-height: 1.2; }
+  .s0-title em { color: var(--gold); font-style: italic; }
+  .s0-sub { font-size: 14px; color: var(--warm); line-height: 1.7; max-width: 300px; }
+
+  /* ══ S2: Paradas ══ */
+  #s2 { background: var(--cream); flex-direction: column; }
+
+  .s2-header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-end; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .eyebrow { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+  .s2-htitle { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--ink); }
+
+  .progress-line { display: flex; gap: 5px; align-items: center; }
+  .pl-seg { height: 2px; width: 28px; background: var(--border); border-radius: 1px; transition: background 0.4s; }
+  .pl-seg.done { background: var(--gold); }
+  .pl-seg.active { background: var(--ink); }
+
+  .s2-body { flex: 1; overflow-y: auto; padding: 24px 32px; scroll-behavior: smooth; }
+  .s2-body::-webkit-scrollbar { width: 3px; }
+  .s2-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .stop-card {
+    border: 1px solid var(--border); border-radius: 2px; margin-bottom: 16px;
+    overflow: hidden; transition: border-color 0.3s, box-shadow 0.3s; background: #fff;
+  }
+  .stop-card.is-active { border-color: var(--gold); box-shadow: 0 2px 20px rgba(201,148,58,0.12); }
+  .stop-card.is-done { border-color: var(--sage); background: #F8FBF7; }
+  .stop-card.is-locked { opacity: 0.45; }
+
+  .stop-head { display: flex; align-items: center; padding: 16px 20px; gap: 16px; }
+  .stop-num {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif; font-size: 14px; color: var(--warm);
+    flex-shrink: 0; transition: all 0.3s;
+  }
+  .is-active .stop-num { border-color: var(--gold); color: var(--gold); }
+  .is-done .stop-num { border-color: var(--sage); background: var(--sage); color: #fff; font-size: 16px; }
+
+  .stop-info { flex: 1; }
+  .stop-name { font-size: 15px; font-weight: 500; color: var(--ink); }
+  .stop-meta { font-size: 11px; color: var(--warm); margin-top: 2px; display: flex; align-items: center; gap: 8px; }
+  .stop-meta a { color: var(--gold); text-decoration: none; font-size: 10px; letter-spacing: 1px; }
+
+  .stop-badge { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; }
+  .badge-pending { background: #F0EDE6; color: var(--warm); }
+  .badge-active { background: #FDF5E6; color: var(--gold); }
+  .badge-done { background: #EEF4EC; color: var(--sage); }
+
+  .stop-body { padding: 0 20px 20px; border-top: 1px solid #F0EDE6; display: none; }
+  .is-active .stop-body { display: block; }
+
+  .rating-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--warm); margin: 16px 0 10px; }
+
+  .stars { display: flex; gap: 8px; }
+  .star { font-size: 28px; cursor: pointer; color: var(--border); transition: color 0.15s, transform 0.1s; user-select: none; line-height: 1; }
+  .star:hover { transform: scale(1.15); }
+  .star.lit { color: var(--gold); }
+
+  .timer-row {
+    display: flex; align-items: center; gap: 12px;
+    margin: 18px 0 20px; padding: 12px 14px;
+    background: #FAF7F2; border: 1px solid var(--border); border-radius: 2px;
+  }
+  .timer-icon { font-size: 18px; }
+  .timer-info { flex: 1; }
+  .timer-label { font-size: 10px; color: var(--warm); letter-spacing: 1.5px; text-transform: uppercase; }
+  .timer-value { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--ink); letter-spacing: 2px; }
+  .timer-value.over { color: var(--terra); }
+  .timer-note { font-size: 10px; color: var(--warm); margin-top: 2px; }
+
+  .btn-complete-stop {
+    width: 100%; background: var(--ink); color: var(--cream); border: none;
+    font-family: 'DM Sans', sans-serif; font-size: 10px; letter-spacing: 3px;
+    text-transform: uppercase; padding: 14px; cursor: pointer; transition: background 0.2s; margin-top: 4px;
+  }
+  .btn-complete-stop:hover { background: #2E2920; }
+  .btn-complete-stop:disabled { opacity: 0.3; cursor: default; }
+
+  .stop-done-summary { padding: 12px 20px; display: none; align-items: center; justify-content: space-between; }
+  .is-done .stop-done-summary { display: flex; }
+  .done-stars { display: flex; gap: 4px; }
+  .done-star { font-size: 14px; color: var(--border); }
+  .done-star.lit { color: var(--gold); }
+  .done-time { font-size: 11px; color: var(--warm); }
+
+  /* ══ S3: Fin ══ */
+  #s3 {
+    background: var(--ink);
+    align-items: center; justify-content: center;
+    flex-direction: column; text-align: center; padding: 40px 32px;
+  }
+  .s3-icon { font-size: 48px; margin-bottom: 24px; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  .s3-title { font-family: 'Playfair Display', serif; font-size: clamp(28px,7vw,52px); color: var(--cream); line-height: 1.1; margin-bottom: 8px; }
+  .s3-title em { color: var(--gold); font-style: italic; }
+  .s3-sub { font-size: 13px; color: var(--warm); margin-bottom: 32px; line-height: 1.6; max-width: 320px; }
+
+  .s3-summary { width: 100%; max-width: 380px; border: 1px solid #2E2920; border-radius: 2px; overflow: hidden; margin-bottom: 32px; }
+  .s3-sum-header { background: #141008; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .s3-sum-header span { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--warm); }
+  .s3-sum-header strong { font-size: 9px; letter-spacing: 2px; color: var(--gold); }
+  .s3-sum-row { display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid #1E1A12; gap: 12px; }
+  .s3-sum-row:last-child { border-bottom: none; }
+  .s3-num { font-family: 'Playfair Display', serif; font-size: 11px; color: var(--warm); width: 16px; flex-shrink: 0; }
+  .s3-bar { flex: 1; font-size: 12px; color: var(--cream); }
+  .s3-stars { display: flex; gap: 3px; }
+  .s3-star { font-size: 11px; color: #3A3020; }
+  .s3-star.lit { color: var(--gold); }
+  .s3-time { font-size: 11px; color: var(--warm); width: 40px; text-align: right; }
+
+  .btn-send {
+    background: var(--gold); color: var(--ink); border: none;
+    font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 500;
+    letter-spacing: 3px; text-transform: uppercase; padding: 18px 52px;
+    cursor: pointer; transition: background 0.2s, transform 0.1s; width: 100%; max-width: 380px;
+  }
+  .btn-send:hover { background: var(--gold-lt); }
+  .btn-send:active { transform: scale(0.98); }
+  .s3-legal { margin-top: 16px; font-size: 10px; color: #3A3020; max-width: 320px; }
+
+  /* ══ S4: Enviado ══ */
+  #s4 {
+    background: var(--ink); align-items: center; justify-content: center;
+    flex-direction: column; text-align: center; padding: 40px; gap: 20px;
+  }
+  .sent-circle { width: 80px; height: 80px; border-radius: 50%; border: 1.5px solid var(--sage); display: flex; align-items: center; justify-content: center; font-size: 32px; }
+  .sent-title { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--cream); }
+  .sent-sub { font-size: 13px; color: var(--warm); line-height: 1.6; max-width: 280px; }
+</style>
+</head>
+<body>
+
+<!-- S0: Día incorrecto -->
+<div class="screen" id="s0">
+  <div class="s0-icon">🫒</div>
+  <h2 class="s0-title">Todavía no<br>es el <em>momento</em></h2>
+  <p class="s0-sub">Este link solo funciona el día de tu ruta. Guarda las fuerzas para entonces 🫒</p>
+</div>
+
+<!-- S2: Paradas -->
+<div class="screen" id="s2">
+  <div class="s2-header">
+    <div>
+      <div class="eyebrow" id="eyebrow">La Ruta de las Gildas</div>
+      <div class="s2-htitle">Tus 5 paradas</div>
+    </div>
+    <div class="progress-line" id="progressLine"></div>
+  </div>
+  <div class="s2-body" id="stopsContainer"></div>
+</div>
+
+<!-- S3: Completado -->
+<div class="screen" id="s3">
+  <div class="s3-icon">🫒</div>
+  <h2 class="s3-title">¡Lo has<br><em>conseguido!</em></h2>
+  <p class="s3-sub">Has completado la ruta entera. Ahora solo queda un paso para reclamar tu tesoro.</p>
+  <div class="s3-summary" id="s3Summary"></div>
+  <button class="btn-send" id="btnSend" onclick="sendMail()">
+    Enviar y recibir el regalo ✦
+  </button>
+  <p class="s3-legal" id="s3Legal"></p>
+</div>
+
+<!-- S4: Enviado -->
+<div class="screen" id="s4">
+  <div class="sent-circle">✓</div>
+  <div class="sent-title">¡Enviado!</div>
+  <div class="sent-sub">Revisa tu email. Hay una sorpresa esperándote dentro.</div>
+</div>
+
+<script>
+const WEBHOOK_URL = "https://n8n-adriagrau.onrender.com/webhook/ejecutar-gildas";
+const TIEMPO_RECOMENDADO = 20;
+
+const BARES = [
+  { name: "Bodega Neus",  maps: "https://maps.app.goo.gl/UepWkryABDSaJCz98" },
+  { name: "Bar Bocata",   maps: "https://maps.app.goo.gl/YHvD89FqxTP16Mys5" },
+  { name: "Bodega Joan",  maps: "https://maps.app.goo.gl/W4VX7EnY9GWUZL3s9" },
+  { name: "Morro Fi",     maps: "https://maps.app.goo.gl/i1K6iZPCRpeJ8Vyv8" },
+  { name: "Bar Anita",    maps: "https://maps.app.goo.gl/xbpfPDywaimvtZzb9" },
+];
+
+// Leer parámetros de la URL
+const params = new URLSearchParams(window.location.search);
+const fecha  = params.get("fecha")  || "";
+const nombre = params.get("nombre") || "";
+const email  = params.get("email")  || "";
+
+const state = BARES.map(() => ({ rating: 0, startTime: null, elapsed: 0, done: false }));
+let currentStop = 0;
+let timerInterval = null;
+
+function getLocalDate() {
+  const now = new Date();
+  return now.getFullYear() + "-" +
+    String(now.getMonth() + 1).padStart(2, "0") + "-" +
+    String(now.getDate()).padStart(2, "0");
+}
+
+function isToday() {
+  return getLocalDate() === fecha;
+}
+
+// Arrancar
+if (!fecha || !isToday()) {
+  showScreen("s0");
+} else {
+  document.getElementById("eyebrow").textContent = "La ruta de " + nombre;
+  document.getElementById("s3Legal").textContent =
+    `Se enviará un email a ${email} con el resumen y una sorpresa.`;
+  showScreen("s2");
+  renderStops();
+  startStopTimer(0);
+}
+
+function renderStops() {
+  const container = document.getElementById("stopsContainer");
+  const progress  = document.getElementById("progressLine");
+  container.innerHTML = "";
+  progress.innerHTML  = "";
+
+  BARES.forEach((bar, i) => {
+    const st = state[i];
+    const statusClass = st.done ? "is-done" : (i === currentStop ? "is-active" : "is-locked");
+
+    const seg = document.createElement("div");
+    seg.className = "pl-seg" + (st.done ? " done" : (i === currentStop ? " active" : ""));
+    progress.appendChild(seg);
+
+    const card = document.createElement("div");
+    card.className = `stop-card ${statusClass}`;
+    card.id = `card-${i}`;
+
+    const numIcon = st.done ? "✓" : (i + 1);
+    const badge = st.done
+      ? `<span class="stop-badge badge-done">Completada</span>`
+      : (i === currentStop
+        ? `<span class="stop-badge badge-active">Ahora</span>`
+        : `<span class="stop-badge badge-pending">Pendiente</span>`);
+
+    let starsHTML = "";
+    for (let s = 1; s <= 5; s++)
+      starsHTML += `<span class="star${st.rating >= s ? ' lit' : ''}" onclick="setRating(${i},${s})">★</span>`;
+
+    let doneSummaryStars = "";
+    for (let s = 1; s <= 5; s++)
+      doneSummaryStars += `<span class="done-star${st.rating >= s ? ' lit' : ''}">★</span>`;
+
+    card.innerHTML = `
+      <div class="stop-head">
+        <div class="stop-num">${numIcon}</div>
+        <div class="stop-info">
+          <div class="stop-name">${bar.name}</div>
+          <div class="stop-meta">
+            Parada ${i+1} de 5
+            <a href="${bar.maps}" target="_blank">Ver en Maps ↗</a>
+          </div>
+        </div>
+        ${badge}
+      </div>
+      <div class="stop-done-summary">
+        <div class="done-stars">${doneSummaryStars}</div>
+        <div class="done-time">${st.elapsed ? formatTime(st.elapsed) : ""}</div>
+      </div>
+      <div class="stop-body">
+        <div class="rating-label">Valora la gilda</div>
+        <div class="stars" id="stars-${i}">${starsHTML}</div>
+        <div class="timer-row">
+          <div class="timer-icon">⏱</div>
+          <div class="timer-info">
+            <div class="timer-label">Tiempo en el bar</div>
+            <div class="timer-value" id="timer-${i}">00:00</div>
+            <div class="timer-note">Recomendado: ${TIEMPO_RECOMENDADO} min</div>
+          </div>
+        </div>
+        <button class="btn-complete-stop" id="btnStop-${i}" onclick="completeStop(${i})" disabled>
+          Completar parada ${i+1}
+        </button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function setRating(stopIdx, rating) {
+  if (stopIdx !== currentStop) return;
+  state[stopIdx].rating = rating;
+  document.getElementById(`stars-${stopIdx}`).querySelectorAll(".star").forEach((s, i) => {
+    s.classList.toggle("lit", i < rating);
+  });
+  document.getElementById(`btnStop-${stopIdx}`).disabled = false;
+}
+
+function startStopTimer(idx) {
+  if (timerInterval) clearInterval(timerInterval);
+  state[idx].startTime = Date.now();
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - state[idx].startTime) / 1000);
+    state[idx].elapsed = elapsed;
+    const el = document.getElementById(`timer-${idx}`);
+    if (el) {
+      el.textContent = formatTime(elapsed);
+      el.classList.toggle("over", elapsed / 60 > TIEMPO_RECOMENDADO);
+    }
+  }, 1000);
+}
+
+function completeStop(idx) {
+  clearInterval(timerInterval);
+  state[idx].elapsed = Math.floor((Date.now() - state[idx].startTime) / 1000);
+  state[idx].done = true;
+
+  if (idx < BARES.length - 1) {
+    currentStop = idx + 1;
+    renderStops();
+    startStopTimer(currentStop);
+    setTimeout(() => {
+      const nextCard = document.getElementById(`card-${currentStop}`);
+      if (nextCard) nextCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  } else {
+    renderStops();
+    setTimeout(() => showS3(), 600);
+  }
+}
+
+function formatTime(secs) {
+  const m = String(Math.floor(secs / 60)).padStart(2, "0");
+  const s = String(secs % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function showS3() {
+  const summary = document.getElementById("s3Summary");
+  const avg = (state.reduce((a, s) => a + s.rating, 0) / state.length).toFixed(1);
+  summary.innerHTML = `
+    <div class="s3-sum-header">
+      <span>Resumen de la ruta</span>
+      <strong>Media: ${avg}/5</strong>
+    </div>
+  `;
+  state.forEach((st, i) => {
+    let starsHTML = "";
+    for (let s = 1; s <= 5; s++)
+      starsHTML += `<span class="s3-star${st.rating >= s ? ' lit' : ''}">★</span>`;
+    const row = document.createElement("div");
+    row.className = "s3-sum-row";
+    row.innerHTML = `
+      <div class="s3-num">${i+1}</div>
+      <div class="s3-bar">${BARES[i].name}</div>
+      <div class="s3-stars">${starsHTML}</div>
+      <div class="s3-time">${formatTime(st.elapsed)}</div>
+    `;
+    summary.appendChild(row);
+  });
+  showScreen("s3");
+}
+
+async function sendMail() {
+  const btn = document.getElementById("btnSend");
+  btn.textContent = "Enviando...";
+  btn.disabled = true;
+
+  const avg = (state.reduce((a, s) => a + s.rating, 0) / state.length).toFixed(1);
+  const payload = {
+    email, nombre, fecha,
+    media: avg,
+    paradas: state.map((st, i) => ({
+      numero: i + 1,
+      bar: BARES[i].name,
+      maps: BARES[i].maps,
+      rating: st.rating,
+      tiempo: formatTime(st.elapsed),
+      tiempo_segundos: st.elapsed,
+    }))
+  };
+
+  try {
+    await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch(e) {
+    console.warn("Webhook error:", e);
+  }
+
+  showScreen("s4");
+}
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+</script>
+</body>
+</html>
